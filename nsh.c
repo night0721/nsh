@@ -261,9 +261,7 @@ int main(int argc, char **argv)
 					}
 					if (isspace(buffer[i]) || (ispunct(buffer[i]) &&
 								buffer[i] != '_' && buffer[i] != '#')) {
-						if (word_len > 0 && buffer[i] != '*' &&
-								buffer[i] != '&' && buffer[i] != '=' &&
-								buffer[i] != '+' && buffer[i] != '|') {
+						if (word_len > 0) {
 							word[word_len] = '\0';
 							if (buffer[i] == '(' && !is_keyword(word) &&
 									!is_type(word)) {
@@ -291,14 +289,9 @@ int main(int argc, char **argv)
 								buffer[i] == '|' || buffer[i] == '!' ||
 								buffer[i] == '<' || buffer[i] == '>') {
 							word[word_len++] = buffer[i];
-							if (buffer[i+1] != '*' && buffer[i+1] != '&' &&
-									buffer[i+1] != '=' && buffer[i+1] != '+' &&
-									buffer[i+1] != '|' && buffer[i] != '!'&&
-									buffer[i] != '<' && buffer[i] != '>') {
-								word[word_len] = '\0';
-								highlight_symbol(word);
-								word_len = 0;
-							}
+							word[word_len] = '\0';
+							word_len = 0;
+							highlight_symbol(word);
 							continue;
 						}
 						printf("%c", buffer[i]);
