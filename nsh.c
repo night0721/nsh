@@ -223,8 +223,7 @@ int main(int argc, char **argv)
 			fprintf(stderr, "Unable to open file: %s\n", argv[i]);
 			exit(1);
 		}
-		/* Handle file without extension
-		 * ext is the extension if . exist in filename, otherwise nothing */
+		/* Handle file without extension */
 		char *ext = strrchr(argv[i], '.');
 		if (ext != NULL) {
 			/* How to identify file type if there isn't extension? */
