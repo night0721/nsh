@@ -13,14 +13,17 @@
 #define COLOR_YELLOW "\033[38;2;249;226;175m"
 #define COLOR_SKY "\033[38;2;137;220;235m"
 #define COLOR_RED "\033[38;2;243;139;168m"
-#define COLOR_PEACH	"\033[38;2;250;179;135m"
+#define COLOR_PEACH "\033[38;2;250;179;135m"
+#define COLOR_PINK "\033[38;2;245;194;231m"
 
 const char *keywords[] = {
-	"if", "else", "while", "for", "return", "switch", "case", "default", "break", "continue", "const", "#define", "#include", NULL
+	"if", "else", "while", "for", "return", "switch", "case", "default",
+	"break", "continue", "const", "#define", "#include", NULL
 };
 
 const char *types[] = {
-	"void", "int", "char", "float", "double", "long", "short", "unsigned", "signed", "struct", "enum", "union", NULL
+	"void", "int", "char", "float", "double", "long", "short", "unsigned",
+	"signed", "struct", "enum", "union", NULL
 };
 
 /* Function declarations for different token handling */
@@ -137,35 +140,73 @@ void highlight_char(const char *line, int *i)
 	printf(COLOR_TEAL "'");
 	(*i)++;
 	while (line[*i] != '\'' && line[*i] != '\0') {
-		if (line[*i] == '\\' && (line[*i + 1] == '\'' || line[*i + 1] == '\\')) {
-			printf("%c%c", line[*i], line[*i + 1]); // Handle escape sequences
-			(*i) += 2;
+		/* Handle escape sequence */
+		if (line[*i] == '\\' && line[*i+1] > 32 && line[*i+1] < 127) {
+			printf(COLOR_PINK "%c%c" COLOR_RESET, line[*i], line[*i + 1]);
+			/* Check if escape sequence is octal */
+			int cur_idx = (*i) + 2;
+			while (line[cur_idx] > 47 && line[cur_idx] < 58) {
+				printf(COLOR_PINK "%c" COLOR_RESET, line[cur_idx]);
+				cur_idx++;
+			}
+			if (cur_idx == *i + 2) {
+				/* Not octal escape code */
+				(*i) += 2;
+			} else {
+				(*i) += cur_idx - *i;
+			}
 		} else {
-			printf("%c", line[*i]);
+			printf(COLOR_TEAL "%c", line[*i]);
 			(*i)++;
 		}
 	}
 	if (line[*i] == '\'') {
-		printf("'" COLOR_RESET); // Print closing single quote and reset color
+		printf("'" COLOR_RESET);
 	}
 }
 
 /* Function to handle and highlight string literals */
 void highlight_string(const char *line, int *i)
 {
-	printf(COLOR_GREEN "\""); // Print opening quote in green
+	printf(COLOR_GREEN "\"");
 	(*i)++;
 	while (line[*i] != '"' && line[*i] != '\0') {
-		if (line[*i] == '\\' && (line[*i + 1] == '"' || line[*i + 1] == '\\')) {
-			printf("%c%c", line[*i], line[*i + 1]); // Print the escape character and the next character
-			(*i) += 2; // Move past the escape character and the next character
+		/* Handle escape sequence */
+		if (line[*i] == '\\' && line[*i+1] > 32 && line[*i+1] < 127) {
+			printf(COLOR_PINK "%c%c" COLOR_RESET, line[*i], line[*i + 1]);
+			/* Check if escape sequence is octal */
+			int cur_idx = (*i) + 2;
+			while (line[cur_idx] > 47 && line[cur_idx] < 58) {
+				printf(COLOR_PINK "%c" COLOR_RESET, line[cur_idx]);
+				cur_idx++;
+			}
+			if (cur_idx == *i + 2) {
+				/* Not octal escape code */
+				(*i) += 2;
+			} else {
+				(*i) += cur_idx - *i;
+			}
 		} else {
-			printf("%c", line[*i]);
+			printf(COLOR_GREEN "%c", line[*i]);
 			(*i)++;
 		}
 	}
 	if (line[*i] == '"') {
-		printf("\"" COLOR_RESET); // Print the closing quote and reset color
+		printf("\"" COLOR_RESET);
+	}
+}
+
+/* Function to handle and highlight include strings */
+void highlight_include(const char *line, int *i)
+{
+	printf(COLOR_GREEN "<");
+	(*i)++;
+	while (line[*i] != '>' && line[*i] != '\0') {
+		printf(COLOR_GREEN "%c", line[*i]);
+		(*i)++;
+	}
+	if (line[*i] == '>') {
+		printf(">" COLOR_RESET);
 	}
 }
 
@@ -182,11 +223,11 @@ int main(int argc, char **argv)
 			fprintf(stderr, "Unable to open file: %s\n", argv[i]);
 			exit(1);
 		}
-		/* handle file without extension
+		/* Handle file without extension
 		 * ext is the extension if . exist in filename, otherwise nothing */
 		char *ext = strrchr(argv[i], '.');
 		if (ext != NULL) {
-			/* how to identify file type if there isn't extension? */
+			/* How to identify file type if there isn't extension? */
 			ext++;
 		}
 		char buffer[1024];
@@ -204,6 +245,14 @@ int main(int argc, char **argv)
 						highlight_string(buffer, &i);
 						continue;
 					}
+					if (buffer[i] == '<') {
+						if (buffer[i-1] != NULL && buffer[i-1] == 'e' ||
+								(buffer[i-1] != NULL && buffer[i-1] == ' ' &&
+								 buffer[i-2] != NULL && buffer[i-2] == 'e')) {
+							highlight_include(buffer, &i);
+							continue;
+						}
+					}
 					if (buffer[i] == '/' && buffer[i+1] == '/') {
 						highlight_single_comment(buffer, &i);
 						break;
@@ -211,30 +260,42 @@ int main(int argc, char **argv)
 					if (buffer[i] == '/' && buffer[i+1] == '*') {
 						highlight_multi_comment(buffer, &i);
 					}
-					if (isspace(buffer[i]) || (ispunct(buffer[i]) && buffer[i] != '_' && buffer[i] != '#')) {
-						if (word_len > 0 && buffer[i] != '*' && buffer[i] != '&' && buffer[i] != '=' && buffer[i] != '+' && buffer[i] != '|') {
+					if (isspace(buffer[i]) || (ispunct(buffer[i]) &&
+								buffer[i] != '_' && buffer[i] != '#')) {
+						if (word_len > 0 && buffer[i] != '*' &&
+								buffer[i] != '&' && buffer[i] != '=' &&
+								buffer[i] != '+' && buffer[i] != '|') {
 							word[word_len] = '\0';
-							if (buffer[i] == '(' && !is_keyword(word) && !is_type(word)) {
-								highlight_function(word);  // Highlight function if it’s not a keyword or type
+							if (buffer[i] == '(' && !is_keyword(word) &&
+									!is_type(word)) {
+								highlight_function(word);
 							} else if (is_type(word)) {
-								highlight_type(word);  // Highlight types correctly
+								highlight_type(word);
 							} else if (is_keyword(word)) {
-								highlight_keyword(word);  // Highlight keywords or other words
+								highlight_keyword(word);
 							} else {
 								highlight_normal(word);
 							}
 							word_len = 0;
 						}
-						if (buffer[i] == '[' || buffer[i] == ']' || buffer[i] == '(' || buffer[i] == ')' || buffer[i] == '{' || buffer[i] == '}') {
+						if (buffer[i] == '[' || buffer[i] == ']' ||
+								buffer[i] == '(' || buffer[i] == ')' ||
+								buffer[i] == '{' || buffer[i] == '}') {
 							word[word_len++] = buffer[i];
 							word[word_len] = '\0';
 							highlight_brackets(word);
 							word_len = 0;
 							continue;
 						}
-						if (buffer[i] == '*' || buffer[i] == '&' || buffer[i] == '=' || buffer[i] == '+' || buffer[i] == '|') {
+						if (buffer[i] == '*' || buffer[i] == '&' ||
+								buffer[i] == '=' || buffer[i] == '+' ||
+								buffer[i] == '|' || buffer[i] == '!' ||
+								buffer[i] == '<' || buffer[i] == '>') {
 							word[word_len++] = buffer[i];
-							if (buffer[i+1] != '*' && buffer[i+1] != '&' && buffer[i+1] != '=' && buffer[i+1] != '+' && buffer[i+1] != '|') {
+							if (buffer[i+1] != '*' && buffer[i+1] != '&' &&
+									buffer[i+1] != '=' && buffer[i+1] != '+' &&
+									buffer[i+1] != '|' && buffer[i] != '!'&&
+									buffer[i] != '<' && buffer[i] != '>') {
 								word[word_len] = '\0';
 								highlight_symbol(word);
 								word_len = 0;
