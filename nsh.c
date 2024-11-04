@@ -236,6 +236,10 @@ int main(int argc, char **argv)
 		while (fgets(buffer, sizeof(buffer), f) != NULL) {
 			if (ext && strcmp(ext, "c") == 0) {
 				for (int i = 0; buffer[i] != '\0'; i++) {
+					if (buffer[i] == '\t') {
+						printf("    ");
+						continue;
+					}
 					if (buffer[i] == '\'') {
 						highlight_char(buffer, &i);
 						continue;
@@ -245,9 +249,9 @@ int main(int argc, char **argv)
 						continue;
 					}
 					if (buffer[i] == '<') {
-						if (buffer[i-1] != NULL && buffer[i-1] == 'e' ||
-								(buffer[i-1] != NULL && buffer[i-1] == ' ' &&
-								 buffer[i-2] != NULL && buffer[i-2] == 'e')) {
+						if ((buffer[i-1] != '\0' && buffer[i-1] == 'e') ||
+								(buffer[i-1] != '\0' && buffer[i-1] == ' ' &&
+								 buffer[i-2] != '\0' && buffer[i-2] == 'e')) {
 							highlight_include(buffer, &i);
 							continue;
 						}
