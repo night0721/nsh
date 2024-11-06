@@ -210,132 +210,145 @@ void highlight_include(const char *line, int *i)
 	}
 }
 
-/* Main function to process input */
-int main(int argc, char **argv)
+void highlight(char *filename)
 {
-	if (argc < 2) {
-		fprintf(stderr, "nsh <file> <file2> ...\n");
-		exit(1);
-	}
-	for (int i = 1; i < argc; i++) {
-		FILE *f = fopen(argv[i], "r");
+	char *ext;
+	FILE *f;
+	if (filename == NULL) {
+		f = stdin;
+	} else {
+		f = fopen(filename, "r");
 		if (!f) {
-			fprintf(stderr, "Unable to open file: %s\n", argv[i]);
+			fprintf(stderr, "Unable to open file: %s\n", filename);
 			exit(1);
 		}
 		/* Handle file without extension */
-		char *ext = strrchr(argv[i], '.');
+		ext = strrchr(filename, '.');
 		if (ext != NULL) {
 			/* How to identify file type if there isn't extension? */
 			ext++;
 		}
-		char buffer[1024];
-		char word[256];
-		int word_len = 0;
+	}
 
-		while (fgets(buffer, sizeof(buffer), f) != NULL) {
-			if (ext && strcmp(ext, "c") == 0) {
-				for (int i = 0; buffer[i] != '\0'; i++) {
-					if (buffer[i] == '\t') {
-						printf("    ");
+	char buffer[1024];
+	char word[256];
+	int word_len = 0;
+
+	while (fgets(buffer, sizeof(buffer), f) != NULL) {
+		if (ext && strcmp(ext, "c") == 0) {
+			for (int i = 0; buffer[i] != '\0'; i++) {
+				if (buffer[i] == '\t') {
+					printf("    ");
+					continue;
+				}
+				if (buffer[i] == '\'') {
+					highlight_char(buffer, &i);
+					continue;
+				}
+				if (buffer[i] == '"') {
+					highlight_string(buffer, &i);
+					continue;
+				}
+				if (buffer[i] == '<') {
+					if ((buffer[i-1] != '\0' && buffer[i-1] == 'e') ||
+							(buffer[i-1] != '\0' && buffer[i-1] == ' ' &&
+							 buffer[i-2] != '\0' && buffer[i-2] == 'e')) {
+						highlight_include(buffer, &i);
 						continue;
-					}
-					if (buffer[i] == '\'') {
-						highlight_char(buffer, &i);
-						continue;
-					}
-					if (buffer[i] == '"') {
-						highlight_string(buffer, &i);
-						continue;
-					}
-					if (buffer[i] == '<') {
-						if ((buffer[i-1] != '\0' && buffer[i-1] == 'e') ||
-								(buffer[i-1] != '\0' && buffer[i-1] == ' ' &&
-								 buffer[i-2] != '\0' && buffer[i-2] == 'e')) {
-							highlight_include(buffer, &i);
-							continue;
-						}
-					}
-					if (buffer[i] == '/' && buffer[i+1] == '/') {
-						highlight_single_comment(buffer, &i);
-						break;
-					}
-					if (buffer[i] == '/' && buffer[i+1] == '*') {
-						highlight_multi_comment(buffer, &i);
-					}
-					if (isspace(buffer[i]) || (ispunct(buffer[i]) &&
-								buffer[i] != '_' && buffer[i] != '#')) {
-						if (word_len > 0) {
-							word[word_len] = '\0';
-							if (buffer[i] == '(' && !is_keyword(word) &&
-									!is_type(word)) {
-								highlight_function(word);
-							} else if (is_type(word)) {
-								highlight_type(word);
-							} else if (is_keyword(word)) {
-								highlight_keyword(word);
-							} else {
-								highlight_normal(word);
-							}
-							word_len = 0;
-						}
-						if (buffer[i] == '[' || buffer[i] == ']' ||
-								buffer[i] == '(' || buffer[i] == ')' ||
-								buffer[i] == '{' || buffer[i] == '}') {
-							word[word_len++] = buffer[i];
-							word[word_len] = '\0';
-							highlight_brackets(word);
-							word_len = 0;
-							continue;
-						}
-						if (buffer[i] == '*' || buffer[i] == '&' ||
-								buffer[i] == '=' || buffer[i] == '+' ||
-								buffer[i] == '|' || buffer[i] == '!' ||
-								buffer[i] == '<' || buffer[i] == '>') {
-							word[word_len++] = buffer[i];
-							word[word_len] = '\0';
-							word_len = 0;
-							highlight_symbol(word);
-							continue;
-						}
-						printf("%c", buffer[i]);
-					} else if (isdigit(buffer[i]) ) {
-						word[word_len++] = buffer[i];
-						if (isdigit(buffer[i+1]) == 0) {
-							word[word_len] = '\0';
-							highlight_number(word);
-							word_len = 0;
-						}
-					} else {
-						word[word_len++] = buffer[i];
 					}
 				}
-			} else {
-				/* Remove newline from buffer, if present */
-				size_t len = strlen(buffer);
-				if (len > 0 && buffer[len - 1] == '\n') {
-					buffer[len - 1] = '\0';
+				if (buffer[i] == '/' && buffer[i+1] == '/') {
+					highlight_single_comment(buffer, &i);
+					break;
 				}
-
-				if (strncmp(buffer, "---", 3) == 0) {
-					printf(COLOR_YELLOW "%s" COLOR_RESET "\n", buffer);
-				} else if (strncmp(buffer, "+++", 3) == 0) {
-					printf(COLOR_PEACH "%s" COLOR_RESET "\n", buffer);
-				} else if (strncmp(buffer, "@@", 2) == 0) {
-					printf(COLOR_OVERLAY0 "%s" COLOR_RESET "\n", buffer);
-				} else if (strncmp(buffer, "index", 5) == 0) {
-					printf(COLOR_TEAL "%s" COLOR_RESET "\n", buffer);
-				} else if (strncmp(buffer, "diff", 4) == 0) {
-					printf(COLOR_BLUE "%s" COLOR_RESET "\n", buffer);
-				} else if (buffer[0] == '+') {
-					printf(COLOR_GREEN "%s" COLOR_RESET "\n", buffer);
-				} else if (buffer[0] == '-') {
-					printf(COLOR_RED "%s" COLOR_RESET "\n", buffer);
+				if (buffer[i] == '/' && buffer[i+1] == '*') {
+					highlight_multi_comment(buffer, &i);
+				}
+				if (isspace(buffer[i]) || (ispunct(buffer[i]) &&
+							buffer[i] != '_' && buffer[i] != '#')) {
+					if (word_len > 0) {
+						word[word_len] = '\0';
+						if (buffer[i] == '(' && !is_keyword(word) &&
+								!is_type(word)) {
+							highlight_function(word);
+						} else if (is_type(word)) {
+							highlight_type(word);
+						} else if (is_keyword(word)) {
+							highlight_keyword(word);
+						} else {
+							highlight_normal(word);
+						}
+						word_len = 0;
+					}
+					if (buffer[i] == '[' || buffer[i] == ']' ||
+							buffer[i] == '(' || buffer[i] == ')' ||
+							buffer[i] == '{' || buffer[i] == '}') {
+						word[word_len++] = buffer[i];
+						word[word_len] = '\0';
+						highlight_brackets(word);
+						word_len = 0;
+						continue;
+					}
+					if (buffer[i] == '*' || buffer[i] == '&' ||
+							buffer[i] == '=' || buffer[i] == '+' ||
+							buffer[i] == '|' || buffer[i] == '!' ||
+							buffer[i] == '<' || buffer[i] == '>') {
+						word[word_len++] = buffer[i];
+						word[word_len] = '\0';
+						word_len = 0;
+						highlight_symbol(word);
+						continue;
+					}
+					printf("%c", buffer[i]);
+				} else if (isdigit(buffer[i]) ) {
+					word[word_len++] = buffer[i];
+					if (isdigit(buffer[i+1]) == 0) {
+						word[word_len] = '\0';
+						highlight_number(word);
+						word_len = 0;
+					}
 				} else {
-					printf("%s\n", buffer);
+					word[word_len++] = buffer[i];
 				}
 			}
+		} else {
+			/* Remove newline from buffer, if present */
+			size_t len = strlen(buffer);
+			if (len > 0 && buffer[len - 1] == '\n') {
+				buffer[len - 1] = '\0';
+			}
+
+			if (strncmp(buffer, "---", 3) == 0) {
+				printf(COLOR_YELLOW "%s" COLOR_RESET "\n", buffer);
+			} else if (strncmp(buffer, "+++", 3) == 0) {
+				printf(COLOR_PEACH "%s" COLOR_RESET "\n", buffer);
+			} else if (strncmp(buffer, "@@", 2) == 0) {
+				printf(COLOR_OVERLAY0 "%s" COLOR_RESET "\n", buffer);
+			} else if (strncmp(buffer, "index", 5) == 0) {
+				printf(COLOR_TEAL "%s" COLOR_RESET "\n", buffer);
+			} else if (strncmp(buffer, "diff", 4) == 0) {
+				printf(COLOR_BLUE "%s" COLOR_RESET "\n", buffer);
+			} else if (buffer[0] == '+') {
+				printf(COLOR_GREEN "%s" COLOR_RESET "\n", buffer);
+			} else if (buffer[0] == '-') {
+				printf(COLOR_RED "%s" COLOR_RESET "\n", buffer);
+			} else {
+				printf("%s\n", buffer);
+			}
 		}
+	}
+
+}
+
+/* Main function to process input */
+int main(int argc, char **argv)
+{
+	if (argc > 1) {
+		for (int i = 1; i < argc; i++) {
+			highlight(argv[i]);
+		}
+	} else {
+		highlight(NULL);
 	}
 	return 0;
 }
