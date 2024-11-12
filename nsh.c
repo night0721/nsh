@@ -3,18 +3,17 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-#define COLOR_RESET "\033[0m"
-#define COLOR_BLUE "\033[38;2;137;180;250m"
-#define COLOR_GREEN "\033[38;2;166;227;161m"
-#define COLOR_ORANGE "\033[38;2;250;179;135m"
+#define COLOR_RESET "\033[m"
+#define COLOR_RED "\033[31m"
+#define COLOR_GREEN "\033[32m"
+#define COLOR_YELLOW "\033[33m"
+#define COLOR_BLUE "\033[34m"
+#define COLOR_PINK "\033[35m"
+#define COLOR_TEAL "\033[36m"
 #define COLOR_OVERLAY0 "\033[38;2;108;112;134m"
-#define COLOR_TEAL "\033[38;2;148;226;213m"
 #define COLOR_MAUVE "\033[38;2;203;166;247m"
-#define COLOR_YELLOW "\033[38;2;249;226;175m"
 #define COLOR_SKY "\033[38;2;137;220;235m"
-#define COLOR_RED "\033[38;2;243;139;168m"
 #define COLOR_PEACH "\033[38;2;250;179;135m"
-#define COLOR_PINK "\033[38;2;245;194;231m"
 
 const char *keywords[] = {
 	"if", "else", "while", "for", "return", "switch", "case", "default",
@@ -82,7 +81,7 @@ void highlight_symbol(const char *word)
 
 void highlight_number(const char *word)
 {
-	printf(COLOR_ORANGE "%s" COLOR_RESET, word);
+	printf(COLOR_PEACH "%s" COLOR_RESET, word);
 }
 
 void highlight_normal(const char *word)
@@ -96,7 +95,7 @@ void highlight_normal(const char *word)
 
 	}
 	if (is_constant) {
-		printf(COLOR_ORANGE "%s" COLOR_RESET, word);
+		printf(COLOR_PEACH "%s" COLOR_RESET, word);
 	} else {
 		printf("%s", word);
 	}
