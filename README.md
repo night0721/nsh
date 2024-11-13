@@ -1,5 +1,5 @@
 # nsh
-Neo Syntax Highlighter
+cat(1) implementation to render files with syntax highlighting 
 
 # Usage
 ```sh
